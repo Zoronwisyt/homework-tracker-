@@ -94,6 +94,21 @@ header {
   color: var(--muted);
 }
 
+.sidebar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bulk-actions {
+  padding: 0 12px 10px;
+}
+.bulk-actions .btn-confirm {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+.bulk-actions .btn-confirm:hover { background: #ff7a85; }
+
 .btn-icon {
   width: 26px;
   height: 26px;
@@ -188,11 +203,41 @@ header {
 .class-item:hover { background: rgba(255,255,255,0.04); }
 .class-item.active { background: rgba(124,106,247,0.14); }
 
+.class-item.edit-mode:hover { background: transparent; }
+.class-item.edit-mode .class-item-name, .class-item.edit-mode .class-item-count {
+  opacity: 0.6;
+}
+
+.class-checkbox {
+  margin-right: 4px;
+}
+
 .class-item-dot {
   width: 9px; height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+.class-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.class-item:hover .class-item-actions { opacity: 1; }
+.class-item.edit-mode .class-item-actions { opacity: 0 !important; }
+
+.btn-edit-class {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 4px;
+}
+.btn-edit-class:hover { color: var(--accent2); background: rgba(124,106,247,0.1); }
 
 .class-item-name {
   font-size: 0.85rem;
@@ -276,6 +321,14 @@ header {
   letter-spacing: -0.03em;
   flex: 1;
 }
+
+.class-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-edit-hw { font-size: 1rem; }
 
 .btn-delete-class {
   background: transparent;
@@ -421,6 +474,10 @@ header {
 }
 .hw-checkbox:hover { border-color: var(--accent); }
 .hw-item.done .hw-checkbox { border-color: var(--accent); background: var(--accent); color: #0e0e11; }
+
+.hw-checkbox-bulk {
+  margin-right: 4px;
+}
 
 .hw-name {
   flex: 1;
