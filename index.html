@@ -25,7 +25,16 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <h2>My Classes</h2>
-        <button class="btn-icon" id="addClassBtn" title="Add class">+</button>
+        <div class="sidebar-header-actions">
+          <button class="btn-icon" id="editClassesBtn" title="Edit classes">✏️</button>
+          <button class="btn-icon" id="addClassBtn" title="Add class">+</button>
+        </div>
+      </div>
+
+      <!-- Bulk actions (hidden by default) -->
+      <div class="bulk-actions hidden" id="bulkActions">
+        <button class="btn-cancel" id="cancelBulkActionsBtn">Done</button>
+        <button class="btn-confirm" id="deleteSelectedBtn">Delete Selected</button>
       </div>
 
       <!-- Add class form (hidden by default) -->
@@ -39,6 +48,16 @@
       </div>
 
       <ul class="class-list" id="classList"></ul>
+
+      <!-- Edit class form (hidden by default) -->
+      <div class="add-class-form hidden" id="editClassForm">
+        <input type="text" id="editClassNameInput" placeholder="Class name..." maxlength="30" />
+        <div class="color-picker" id="editColorPicker"></div>
+        <div class="form-actions">
+          <button class="btn-cancel" id="cancelEditClassBtn">Cancel</button>
+          <button class="btn-confirm" id="confirmEditClassBtn">Save</button>
+        </div>
+      </div>
 
       <div class="sidebar-empty hidden" id="sidebarEmpty">
         <p>No classes yet.<br/>Hit <strong>+</strong> to add one.</p>
@@ -61,7 +80,10 @@
           <div class="class-title-row">
             <div class="class-dot" id="classDot"></div>
             <h1 id="classTitle"></h1>
-            <button class="btn-delete-class" id="deleteClassBtn" title="Delete class">🗑</button>
+            <div class="class-header-actions">
+              <button class="btn-icon btn-edit-hw" id="editHwBtn" title="Edit assignments">✏️</button>
+              <button class="btn-delete-class" id="deleteClassBtn" title="Delete class">🗑</button>
+            </div>
           </div>
           <div class="class-stats" id="classStats"></div>
         </div>
@@ -80,6 +102,12 @@
           <button class="tab active" data-filter="pending">Pending</button>
           <button class="tab" data-filter="done">Completed</button>
           <button class="tab" data-filter="all">All</button>
+        </div>
+
+        <!-- HW Bulk actions (hidden by default) -->
+        <div class="bulk-actions hidden" id="hwBulkActions">
+          <button class="btn-cancel" id="cancelHwBulkActionsBtn">Done</button>
+          <button class="btn-confirm" id="deleteSelectedHwBtn">Delete Selected</button>
         </div>
 
         <!-- Homework list -->
