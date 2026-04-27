@@ -11,7 +11,9 @@ const STORAGE_KEY = 'classwork_data_v1';
 let state = {
   classes: [],       // [{ id, name, color, assignments: [{id, name, due, done}] }]
   activeClassId: null,
-  filter: 'pending'
+  filter: 'pending',
+  editMode: false,
+  hwEditMode: false
 };
 
 // ── Persistence ───────────────────────────────────
@@ -65,12 +67,28 @@ const confirmClassBtn= document.getElementById('confirmClassBtn');
 const classList      = document.getElementById('classList');
 const sidebarEmpty   = document.getElementById('sidebarEmpty');
 
+const editClassesBtn = document.getElementById('editClassesBtn');
+const bulkActions    = document.getElementById('bulkActions');
+const cancelBulkActionsBtn = document.getElementById('cancelBulkActionsBtn');
+const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+
+const editClassForm = document.getElementById('editClassForm');
+const editClassNameInput = document.getElementById('editClassNameInput');
+const editColorPicker = document.getElementById('editColorPicker');
+const cancelEditClassBtn = document.getElementById('cancelEditClassBtn');
+const confirmEditClassBtn = document.getElementById('confirmEditClassBtn');
+
 const emptyState  = document.getElementById('emptyState');
 const classView   = document.getElementById('classView');
 const classDot    = document.getElementById('classDot');
 const classTitle  = document.getElementById('classTitle');
 const classStats  = document.getElementById('classStats');
 const deleteClassBtn = document.getElementById('deleteClassBtn');
+
+const editHwBtn = document.getElementById('editHwBtn');
+const hwBulkActions = document.getElementById('hwBulkActions');
+const cancelHwBulkActionsBtn = document.getElementById('cancelHwBulkActionsBtn');
+const deleteSelectedHwBtn = document.getElementById('deleteSelectedHwBtn');
 
 const hwName   = document.getElementById('hwName');
 const hwDue    = document.getElementById('hwDue');
@@ -82,6 +100,7 @@ const tabs = document.querySelectorAll('.tab');
 
 // ── Color picker init ─────────────────────────────
 let selectedColor = CLASS_COLORS[0];
+let editState = { classId: null, selectedColor: null };
 
 CLASS_COLORS.forEach((color, i) => {
   const swatch = document.createElement('div');
@@ -96,6 +115,26 @@ CLASS_COLORS.forEach((color, i) => {
   colorPicker.appendChild(swatch);
 });
 
+function renderEditColorPicker(initialColor) {
+  editColorPicker.innerHTML = '';
+  editState.selectedColor = initialColor;
+  CLASS_COLORS.forEach(color => {
+    const swatch = document.createElement('div');
+    swatch.className = 'color-swatch';
+    if (color === initialColor) {
+      swatch.classList.add('selected');
+    }
+    swatch.style.background = color;
+    swatch.dataset.color = color;
+    swatch.addEventListener('click', () => {
+      document.querySelectorAll('#editColorPicker .color-swatch').forEach(s => s.classList.remove('selected'));
+      swatch.classList.add('selected');
+      editState.selectedColor = color;
+    });
+    editColorPicker.appendChild(swatch);
+  });
+}
+
 // ── Render sidebar ────────────────────────────────
 function renderSidebar() {
   classList.innerHTML = '';
@@ -106,12 +145,16 @@ function renderSidebar() {
     const pending = cls.assignments.filter(a => !a.done).length;
     const li = document.createElement('li');
     li.className = 'class-item' + (cls.id === state.activeClassId ? ' active' : '');
+    li.dataset.classId = cls.id;
     li.innerHTML = `
+      <input type="checkbox" class="class-checkbox hidden" data-checkbox-id="${cls.id}">
       <div class="class-item-dot" style="background:${cls.color}"></div>
       <span class="class-item-name">${escHtml(cls.name)}</span>
       ${pending > 0 ? `<span class="class-item-count">${pending}</span>` : ''}
+      <div class="class-item-actions">
+        <button class="btn-icon btn-edit-class" title="Edit class" data-edit-id="${cls.id}">✏️</button>
+      </div>
     `;
-    li.addEventListener('click', () => selectClass(cls.id));
     classList.appendChild(li);
   });
 }
@@ -162,6 +205,7 @@ function renderHwList(cls) {
     li.className = 'hw-item' + (hw.done ? ' done' : '');
     li.dataset.id = hw.id;
     li.innerHTML = `
+      <input type="checkbox" class="hw-checkbox-bulk hidden" data-hw-checkbox-id="${hw.id}">
       <div class="hw-checkbox" data-check="${hw.id}">${hw.done ? '✓' : ''}</div>
       <span class="hw-name">${escHtml(hw.name)}</span>
       <span class="hw-due ${dueCls}">${label}</span>
@@ -250,6 +294,110 @@ function hideAddForm() {
   addClassBtn.textContent = '+';
 }
 
+// ── Edit class form ────────────────────────────────
+function showEditForm(classId) {
+  const cls = getClass(classId);
+  if (!cls) return;
+
+  hideAddForm();
+  editState.classId = classId;
+  editClassForm.classList.remove('hidden');
+  editClassNameInput.value = cls.name;
+  renderEditColorPicker(cls.color);
+  editClassNameInput.focus();
+}
+
+function hideEditForm() {
+  editClassForm.classList.add('hidden');
+  editState.classId = null;
+  editState.selectedColor = null;
+}
+
+function updateClass() {
+  const name = editClassNameInput.value.trim();
+  if (!name) {
+    editClassNameInput.focus();
+    return;
+  }
+
+  const cls = getClass(editState.classId);
+  if (cls) {
+    cls.name = name;
+    cls.color = editState.selectedColor;
+    save();
+    renderSidebar();
+    renderMain();
+  }
+  hideEditForm();
+}
+
+// ── Bulk actions ───────────────────────────────────
+function toggleEditMode() {
+  state.editMode = !state.editMode;
+  bulkActions.classList.toggle('hidden', !state.editMode);
+  document.querySelectorAll('.class-checkbox').forEach(cb => {
+    cb.classList.toggle('hidden', !state.editMode);
+    cb.checked = false;
+  });
+  document.querySelectorAll('.class-item').forEach(item => {
+    item.classList.toggle('edit-mode', state.editMode);
+  });
+  if (!state.editMode) {
+    hideAddForm();
+    hideEditForm();
+  }
+}
+
+function deleteSelectedClasses() {
+  const selectedIds = [...document.querySelectorAll('.class-checkbox:checked')].map(cb => cb.dataset.checkboxId);
+  if (selectedIds.length === 0) {
+    toggleEditMode();
+    return;
+  }
+  if (!confirm(`Delete ${selectedIds.length} classes and all their assignments?`)) return;
+
+  state.classes = state.classes.filter(c => !selectedIds.includes(c.id));
+  if (selectedIds.includes(state.activeClassId)) {
+    state.activeClassId = state.classes.length ? state.classes[0].id : null;
+  }
+  save();
+  toggleEditMode();
+  renderSidebar();
+  renderMain();
+}
+
+function toggleHwEditMode() {
+  state.hwEditMode = !state.hwEditMode;
+  hwBulkActions.classList.toggle('hidden', !state.hwEditMode);
+  document.querySelectorAll('.hw-checkbox-bulk').forEach(cb => {
+    cb.classList.toggle('hidden', !state.hwEditMode);
+    cb.checked = false;
+  });
+  document.querySelectorAll('.hw-checkbox').forEach(cb => {
+    cb.classList.toggle('hidden', state.hwEditMode);
+  });
+  document.querySelectorAll('.btn-delete-hw').forEach(btn => {
+    btn.classList.toggle('hidden', state.hwEditMode);
+  });
+}
+
+function deleteSelectedHw() {
+  const selectedIds = [...document.querySelectorAll('.hw-checkbox-bulk:checked')].map(cb => cb.dataset.hwCheckboxId);
+  if (selectedIds.length === 0) {
+    toggleHwEditMode();
+    return;
+  }
+
+  const cls = getClass(state.activeClassId);
+  if (!cls) return;
+
+  cls.assignments = cls.assignments.filter(a => !selectedIds.includes(a.id));
+  save();
+  toggleHwEditMode();
+  renderSidebar();
+  renderMain();
+}
+
 // ── Escape HTML ───────────────────────────────────
 function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -265,6 +413,21 @@ cancelClassBtn.addEventListener('click', hideAddForm);
 confirmClassBtn.addEventListener('click', addClass);
 classNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') addClass(); });
 
+// Edit class events
+cancelEditClassBtn.addEventListener('click', hideEditForm);
+confirmEditClassBtn.addEventListener('click', updateClass);
+editClassNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') updateClass(); });
+
+// Bulk actions events
+editClassesBtn.addEventListener('click', toggleEditMode);
+cancelBulkActionsBtn.addEventListener('click', toggleEditMode);
+deleteSelectedBtn.addEventListener('click', deleteSelectedClasses);
+
+// HW bulk actions events
+editHwBtn.addEventListener('click', toggleHwEditMode);
+cancelHwBulkActionsBtn.addEventListener('click', toggleHwEditMode);
+deleteSelectedHwBtn.addEventListener('click', deleteSelectedHw);
+
 deleteClassBtn.addEventListener('click', deleteActiveClass);
 
 addHwBtn.addEventListener('click', addHomework);
@@ -276,6 +439,22 @@ hwList.addEventListener('click', e => {
   const delEl   = e.target.closest('[data-del]');
   if (checkEl) toggleDone(checkEl.dataset.check);
   if (delEl)   deleteHw(delEl.dataset.del);
+});
+
+// Delegated events for class list
+classList.addEventListener('click', e => {
+  if (state.editMode) return;
+
+  const editBtn = e.target.closest('.btn-edit-class');
+  if (editBtn) {
+    showEditForm(editBtn.dataset.editId);
+    return;
+  }
+
+  const classItem = e.target.closest('.class-item');
+  if (classItem) {
+    selectClass(classItem.dataset.classId);
+  }
 });
 
 tabs.forEach(tab => {
